@@ -18,6 +18,7 @@ public class SensorDevice {
 	boolean overHum;
 	boolean synced;
 	int uploadFrequency;
+	private String sensorName;
 
 	public SensorDevice() {
 		super();
@@ -141,6 +142,14 @@ public class SensorDevice {
 
 	public void setUploadFrequency(int uploadFrequency) {
 		this.uploadFrequency = uploadFrequency;
+	}
+
+	public String getSensorName() {
+		return sensorName;
+	}
+
+	public void setSensorName(String sensorName) {
+		this.sensorName = sensorName;
 	}
 
 }

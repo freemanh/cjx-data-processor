@@ -3,6 +3,7 @@ package com.cjx.monitor.postprocessor.core;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.surftools.BeanstalkClient.Client;
 
 @Component
 public class MonitorDataPostProcessor {
@@ -24,6 +26,9 @@ public class MonitorDataPostProcessor {
 
 	@Autowired
 	private JdbcTemplate jdbc;
+
+	@Autowired
+	private Client queue;
 
 	@Transactional
 	public void exec(String content) throws JsonParseException,
@@ -42,7 +47,7 @@ public class MonitorDataPostProcessor {
 
 		SensorDevice sd = jdbc
 				.queryForObject(
-						"select s.id as sensorId, s.collectTime, d.support_power_alarm as supportPowerAlarm, d.status status, d.id as deviceId, s.minHumidity, s.maxHumidity, s.minTemp, s.maxTemp, s.is_over_heat overHeat, s.is_over_hum overHum, temp_revision tempRev, hum_revision as humRev from xdevice d join xsensor s on d.id=s.device_id where d.code=?",
+						"select s.id as sensorId, s.name as sensorName, s.collectTime, d.support_power_alarm as supportPowerAlarm, d.status status, d.id as deviceId, s.minHumidity, s.maxHumidity, s.minTemp, s.maxTemp, s.is_over_heat overHeat, s.is_over_hum overHum, temp_revision tempRev, hum_revision as humRev from xdevice d join xsensor s on d.id=s.device_id where d.code=?",
 						new BeanPropertyRowMapper<SensorDevice>(
 								SensorDevice.class), deviceId);
 		DeviceStatus oldDeviceStatus = DeviceStatus.values()[sd.getStatus()];
@@ -68,6 +73,21 @@ public class MonitorDataPostProcessor {
 						"insert into alarm(alarm_type, device_id, createTime, messageSent) values(?,?,now(), false)",
 						AlarmType.POWEROFF.ordinal(), sd.getDeviceId());
 				newDeviceStatus = DeviceStatus.POWER_OFF;
+				
+				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
+				String deviceName = jdbc.queryForObject("select name from xdevice where id=?", String.class, sd.getDeviceId());
+				queue.useTube("alarm.poweroff");
+				for (String m : mobiles) {
+					queue.put(
+							1024,
+							0,
+							60,
+							String.format(
+									"{\"mobile\":\"%1$s\",\"device\": %2$s, \"addedTime\": %3$o}",
+									m, deviceName,
+									System.currentTimeMillis()).getBytes(
+									"utf-8"));
+				}
 			}
 			String clearAlarmSql = "update alarm set clearTime=now() where alarm_type=? and sensor_id=?";
 			if (isOverHeat) {
@@ -76,6 +96,21 @@ public class MonitorDataPostProcessor {
 						AlarmType.OVER_HEAT.ordinal(), sd.getDeviceId(),
 						sd.getSensorId(), sd.getMaxTemp(), sd.getMinTemp(),
 						reading1, false);
+				
+				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
+				queue.useTube("alarm.reading1");
+				for (String m : mobiles) {
+					queue.put(
+							1024,
+							0,
+							60,
+							String.format(
+									"{\"mobile\":\"%1$s\", \"reading1\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$o}",
+									m, reading1, sd.getSensorName(),
+									sd.getMinTemp(), sd.getMaxTemp(),
+									System.currentTimeMillis()).getBytes(
+									"utf-8"));
+				}
 			} else {
 				jdbc.update(clearAlarmSql, AlarmType.OVER_HEAT.ordinal(),
 						sd.getSensorId());
@@ -86,6 +121,21 @@ public class MonitorDataPostProcessor {
 						AlarmType.OVER_HUM.ordinal(), sd.getDeviceId(),
 						sd.getSensorId(), sd.getMaxHumidity(),
 						sd.getMinHumidity(), reading2, false);
+
+				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
+				queue.useTube("alarm.reading2");
+				for (String m : mobiles) {
+					queue.put(
+							1024,
+							0,
+							60,
+							String.format(
+									"{\"mobile\":\"%1$s\", \"reading2\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$o}",
+									m, reading2, sd.getSensorName(),
+									sd.getMinHumidity(), sd.getMaxHumidity(),
+									System.currentTimeMillis()).getBytes(
+									"utf-8"));
+				}
 			} else {
 				jdbc.update(clearAlarmSql, AlarmType.OVER_HUM.ordinal(),
 						sd.getSensorId());
@@ -100,4 +150,12 @@ public class MonitorDataPostProcessor {
 		}
 
 	}
+
+	private List<String> queryMobileByDeviceId(long id) {
+		return jdbc
+				.queryForList(
+						"SELECT distinct(alarm_phone_number) as mobile  FROM `xcompany_alarm_phone_number` phone  join `xcompany`  comp on phone.`company_id` =comp.`id`  where comp.`id` =? and phone.`alarm_phone_number`  is not null",
+						String.class, id);
+	}
+
 }
