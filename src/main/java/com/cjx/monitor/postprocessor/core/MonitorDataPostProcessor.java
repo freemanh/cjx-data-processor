@@ -1,8 +1,8 @@
 package com.cjx.monitor.postprocessor.core;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.text.ParseException;
+import java.util.Date;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -38,8 +38,7 @@ public class MonitorDataPostProcessor {
 		Double reading2 = (Double) msg.get("reading2");
 		boolean poweroff = (Boolean) msg.get("poweroff");
 		// int failCount = (Integer) msg.get("failCount");
-		Timestamp ts = new Timestamp(Long.parseLong(msg.get("date").toString()));
-		LOGGER.debug("message timestamp is: " + ts.toString());
+		Date date = new Date(Long.valueOf(msg.get("date").toString()));
 
 		SensorDevice sd = jdbc
 				.queryForObject(
@@ -54,9 +53,9 @@ public class MonitorDataPostProcessor {
 		String sql = String
 				.format("INSERT INTO %s (`collect_time`, `device_code`, `humidity`, `sensor_index`, `temperature`, `create_time`) VALUES (?, ?, ?, ?, ?, NOW())",
 						"MONDATA_" + deviceId);
-		jdbc.update(sql, ts, deviceId, reading2, 0, reading1);
+		jdbc.update(sql, date, deviceId, reading2, 0, reading1);
 		if (null == sd.getCollectTime()
-				|| ts.compareTo(sd.getCollectTime()) > 0) {
+				|| date.compareTo(sd.getCollectTime()) > 0) {
 			boolean isOverHeat = reading1 < sd.getMinTemp()
 					|| reading1 > sd.getMaxTemp();
 			boolean isOverHum = reading2 < sd.getMinHumidity()
@@ -94,7 +93,7 @@ public class MonitorDataPostProcessor {
 
 			jdbc.update(
 					"update xsensor set temperature=?, humidity=?, collectTime=?, is_over_heat=?, is_over_hum=? where id=?",
-					reading1, reading2, ts, isOverHeat, isOverHum,
+					reading1, reading2, date, isOverHeat, isOverHum,
 					sd.getSensorId());
 			jdbc.update("update xdevice set status=? where id=?",
 					newDeviceStatus.ordinal(), sd.getDeviceId());
