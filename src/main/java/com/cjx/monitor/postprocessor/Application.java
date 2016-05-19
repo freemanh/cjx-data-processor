@@ -25,6 +25,7 @@ public class Application {
 		MonitorDataPostProcessor proc = ctx.getBean(MonitorDataPostProcessor.class);
 
 		Client client = ctx.getBean(Client.class);
+		client.useTube("data.reading");
 		while (true) {
 			Job job = client.reserve(10);
 			if (null == job) {
