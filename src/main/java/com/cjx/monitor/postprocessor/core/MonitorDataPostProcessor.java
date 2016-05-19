@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.util.ISO8601Utils;
 import com.surftools.BeanstalkClient.Client;
 
 @Component
@@ -73,9 +74,11 @@ public class MonitorDataPostProcessor {
 						"insert into alarm(alarm_type, device_id, createTime, messageSent) values(?,?,now(), false)",
 						AlarmType.POWEROFF.ordinal(), sd.getDeviceId());
 				newDeviceStatus = DeviceStatus.POWER_OFF;
-				
+
 				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
-				String deviceName = jdbc.queryForObject("select name from xdevice where id=?", String.class, sd.getDeviceId());
+				String deviceName = jdbc.queryForObject(
+						"select name from xdevice where id=?", String.class,
+						sd.getDeviceId());
 				queue.useTube("alarm.poweroff");
 				for (String m : mobiles) {
 					queue.put(
@@ -83,9 +86,9 @@ public class MonitorDataPostProcessor {
 							0,
 							60,
 							String.format(
-									"{\"mobile\":\"%1$s\",\"device\": %2$s, \"addedTime\": %3$o}",
+									"{\"mobile\":\"%1$s\",\"device\": %2$s, \"addedTime\": %3$s}",
 									m, deviceName,
-									System.currentTimeMillis()).getBytes(
+									ISO8601Utils.format(new Date())).getBytes(
 									"utf-8"));
 				}
 			}
@@ -96,7 +99,7 @@ public class MonitorDataPostProcessor {
 						AlarmType.OVER_HEAT.ordinal(), sd.getDeviceId(),
 						sd.getSensorId(), sd.getMaxTemp(), sd.getMinTemp(),
 						reading1, false);
-				
+
 				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
 				queue.useTube("alarm.reading1");
 				for (String m : mobiles) {
@@ -105,10 +108,10 @@ public class MonitorDataPostProcessor {
 							0,
 							60,
 							String.format(
-									"{\"mobile\":\"%1$s\", \"reading1\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$o}",
+									"{\"mobile\":\"%1$s\", \"reading\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$s}",
 									m, reading1, sd.getSensorName(),
 									sd.getMinTemp(), sd.getMaxTemp(),
-									System.currentTimeMillis()).getBytes(
+									ISO8601Utils.format(new Date())).getBytes(
 									"utf-8"));
 				}
 			} else {
@@ -130,10 +133,10 @@ public class MonitorDataPostProcessor {
 							0,
 							60,
 							String.format(
-									"{\"mobile\":\"%1$s\", \"reading2\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$o}",
+									"{\"mobile\":\"%1$s\", \"reading\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$s}",
 									m, reading2, sd.getSensorName(),
 									sd.getMinHumidity(), sd.getMaxHumidity(),
-									System.currentTimeMillis()).getBytes(
+									ISO8601Utils.format(new Date())).getBytes(
 									"utf-8"));
 				}
 			} else {
