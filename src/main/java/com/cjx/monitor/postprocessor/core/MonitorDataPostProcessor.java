@@ -86,7 +86,7 @@ public class MonitorDataPostProcessor {
 							0,
 							60,
 							String.format(
-									"{\"mobile\":\"%1$s\",\"device\": %2$s, \"addedTime\": %3$s}",
+									"{\"mobile\":\"%1$s\",\"device\": \"%2$s\", \"addedTime\": \"%3$s\"}",
 									m, deviceName,
 									ISO8601Utils.format(new Date())).getBytes(
 									"utf-8"));
@@ -108,7 +108,7 @@ public class MonitorDataPostProcessor {
 							0,
 							60,
 							String.format(
-									"{\"mobile\":\"%1$s\", \"reading\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$s}",
+									"{\"mobile\":\"%1$s\", \"reading\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": \"%6$s\"}",
 									m, reading1, sd.getSensorName(),
 									sd.getMinTemp(), sd.getMaxTemp(),
 									ISO8601Utils.format(new Date())).getBytes(
@@ -133,7 +133,7 @@ public class MonitorDataPostProcessor {
 							0,
 							60,
 							String.format(
-									"{\"mobile\":\"%1$s\", \"reading\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": %6$s}",
+									"{\"mobile\":\"%1$s\", \"reading\": %2$f, \"sensor\":\"%3$s\", \"min\": %4$f, \"max\": %5$f, \"addedTime\": \"%6$s\"}",
 									m, reading2, sd.getSensorName(),
 									sd.getMinHumidity(), sd.getMaxHumidity(),
 									ISO8601Utils.format(new Date())).getBytes(
