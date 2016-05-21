@@ -157,7 +157,9 @@ public class MonitorDataPostProcessor {
 	private List<String> queryMobileByDeviceId(long id) {
 		return jdbc
 				.queryForList(
-						"SELECT distinct(alarm_phone_number) as mobile  FROM `xcompany_alarm_phone_number` phone  join `xcompany`  comp on phone.`company_id` =comp.`id`  where comp.`id` =? and phone.`alarm_phone_number`  is not null",
+						"SELECT distinct(alarm_phone_number) as mobile "
+								+ "FROM `xcompany_alarm_phone_number` phone join `xcompany` comp  on phone.`company_id`= comp.`id` join xdevice d on d.company_id= comp.id "
+								+ "where d.`id`= ? and phone.`alarm_phone_number` is not null",
 						String.class, id);
 	}
 
