@@ -60,14 +60,18 @@ public class MonitorDataPostProcessor {
 				.format("INSERT INTO %s (`collect_time`, `device_code`, `humidity`, `sensor_index`, `temperature`, `create_time`) VALUES (?, ?, ?, ?, ?, NOW())",
 						"MONDATA_" + deviceId);
 		jdbc.update(sql, date, deviceId, reading2, 0, reading1);
+		
+		boolean isOverHeat = false;
+		boolean isOverHum = false;
+		DeviceStatus newDeviceStatus = DeviceStatus.NORMAL;
+		
 		if (null == sd.getCollectTime()
 				|| date.compareTo(sd.getCollectTime()) > 0) {
-			boolean isOverHeat = reading1 < sd.getMinTemp()
+			isOverHeat = reading1 < sd.getMinTemp()
 					|| reading1 > sd.getMaxTemp();
-			boolean isOverHum = reading2 < sd.getMinHumidity()
+			isOverHum = reading2 < sd.getMinHumidity()
 					|| reading2 > sd.getMaxHumidity();
 
-			DeviceStatus newDeviceStatus = DeviceStatus.NORMAL;
 			if (poweroff && sd.supportPowerAlarm
 					&& !oldDeviceStatus.equals(DeviceStatus.POWER_OFF)) {
 				jdbc.update(
@@ -144,13 +148,13 @@ public class MonitorDataPostProcessor {
 						sd.getSensorId());
 			}
 
-			jdbc.update(
-					"update xsensor set temperature=?, humidity=?, collectTime=?, is_over_heat=?, is_over_hum=? where id=?",
-					reading1, reading2, date, isOverHeat, isOverHum,
-					sd.getSensorId());
-			jdbc.update("update xdevice set status=? where id=?",
-					newDeviceStatus.ordinal(), sd.getDeviceId());
 		}
+		jdbc.update(
+				"update xsensor set temperature=?, humidity=?, collectTime=?, is_over_heat=?, is_over_hum=? where id=?",
+				reading1, reading2, date, isOverHeat, isOverHum,
+				sd.getSensorId());
+		jdbc.update("update xdevice set status=? where id=?",
+				newDeviceStatus.ordinal(), sd.getDeviceId());
 
 	}
 
