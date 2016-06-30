@@ -45,8 +45,16 @@ public class MonitorDataPostProcessor {
 		Double reading2 = (Double) msg.get("reading2");
 		boolean poweroff = (Boolean) msg.get("poweroff");
 		// int failCount = (Integer) msg.get("failCount");
-		Date date = ISO8601Utils.parse(msg.get("date").toString(),
-				new ParsePosition(0));
+		Date date = null;
+		try {
+			date = ISO8601Utils.parse(msg.get("date").toString(),
+					new ParsePosition(0));
+		} catch (Exception e) {
+			LOGGER.info(
+					"Fail to parse date string:{}, it maybe stale data, just pass it.",
+					msg.get("date").toString());
+			return;
+		}
 
 		SensorDevice sd = jdbc
 				.queryForObject(
