@@ -73,40 +73,50 @@ public class MonitorDataPostProcessor {
 
 		boolean isOverHeat = false;
 		boolean isOverHum = false;
-		DeviceStatus newDeviceStatus = DeviceStatus.NORMAL;
 
 		if (null == sd.getCollectTime()
 				|| date.compareTo(sd.getCollectTime()) > 0) {
+			DeviceStatus newDeviceStatus = DeviceStatus.NORMAL;
+
 			isOverHeat = reading1 < sd.getMinTemp()
 					|| reading1 > sd.getMaxTemp();
 			isOverHum = reading2 < sd.getMinHumidity()
 					|| reading2 > sd.getMaxHumidity();
 
-			if (poweroff && sd.supportPowerAlarm
-					&& !oldDeviceStatus.equals(DeviceStatus.POWER_OFF)) {
-				jdbc.update(
-						"insert into alarm(alarm_type, device_id, createTime, messageSent) values(?,?,now(), false)",
-						AlarmType.POWEROFF.ordinal(), sd.getDeviceId());
+			String clearAlarmSql = "update alarm set clearTime=now() where alarm_type=? and sensor_id=?";
+			if (poweroff && sd.supportPowerAlarm) {
 				newDeviceStatus = DeviceStatus.POWER_OFF;
 
-				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
-				String deviceName = jdbc.queryForObject(
-						"select name from xdevice where id=?", String.class,
-						sd.getDeviceId());
-				queue.useTube("alarm.poweroff");
-				for (String m : mobiles) {
-					queue.put(
-							1024,
-							0,
-							60,
-							String.format(
-									"{\"mobile\":\"%1$s\",\"device\": \"%2$s\", \"addedTime\": \"%3$s\"}",
-									m, deviceName,
-									ISO8601Utils.format(new Date())).getBytes(
-									"utf-8"));
+				if (!oldDeviceStatus.equals(DeviceStatus.POWER_OFF)) {
+					jdbc.update(
+							"insert into alarm(alarm_type, device_id, createTime, messageSent) values(?,?,now(), false)",
+							AlarmType.POWEROFF.ordinal(), sd.getDeviceId());
+
+					List<String> mobiles = queryMobileByDeviceId(sd
+							.getDeviceId());
+					String deviceName = jdbc.queryForObject(
+							"select name from xdevice where id=?",
+							String.class, sd.getDeviceId());
+					queue.useTube("alarm.poweroff");
+					for (String m : mobiles) {
+						queue.put(
+								1024,
+								0,
+								60,
+								String.format(
+										"{\"mobile\":\"%1$s\",\"device\": \"%2$s\", \"addedTime\": \"%3$s\"}",
+										m, deviceName,
+										ISO8601Utils.format(new Date()))
+										.getBytes("utf-8"));
+					}
 				}
+
+			} else {
+				newDeviceStatus = DeviceStatus.NORMAL;
+				jdbc.update(
+						"update alarm set clearTime=now() where alarm_type=? and device_id=?",
+						AlarmType.POWEROFF, sd.getDeviceId());
 			}
-			String clearAlarmSql = "update alarm set clearTime=now() where alarm_type=? and sensor_id=?";
 			if (isOverHeat) {
 				jdbc.update(
 						"insert into alarm(alarm_type, device_id, sensor_id, max, min, reading, createTime, messageSent) values(?,?,?,?,?,?,NOW(),?)",
@@ -163,7 +173,7 @@ public class MonitorDataPostProcessor {
 					reading1, reading2, date, isOverHeat, isOverHum,
 					sd.getSensorId());
 			jdbc.update("update xdevice set status=? where id=?",
-					newDeviceStatus.ordinal(), sd.getDeviceId());
+					newDeviceStatus, sd.getDeviceId());
 		}
 
 	}
