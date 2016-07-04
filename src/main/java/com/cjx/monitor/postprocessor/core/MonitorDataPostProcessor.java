@@ -173,7 +173,7 @@ public class MonitorDataPostProcessor {
 					reading1, reading2, date, isOverHeat, isOverHum,
 					sd.getSensorId());
 			jdbc.update("update xdevice set status=? where id=?",
-					newDeviceStatus, sd.getDeviceId());
+					newDeviceStatus.ordinal(), sd.getDeviceId());
 		}
 
 	}
