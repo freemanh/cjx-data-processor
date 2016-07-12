@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -152,6 +153,9 @@ public class MonitorDataPostProcessor {
 				List<String> mobiles = queryMobileByDeviceId(sd.getDeviceId());
 				queue.useTube("alarm.reading2");
 				for (String m : mobiles) {
+					if (StringUtils.isEmpty(m)) {
+						continue;
+					}
 					queue.put(
 							1024,
 							0,
